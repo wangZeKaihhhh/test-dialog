@@ -1,64 +1,106 @@
-import axios, { AxiosProgressEvent, isCancel } from "axios"
-import ConcurrentRequest from "./ConcurrentPool"
-import { nanoid } from "nanoid"
-import { useState } from "react"
-import { TaskStatusEnum, FileItem } from "./types"
+import axios, { AxiosProgressEvent, isCancel } from "axios";
+import ConcurrentRequest from "./ConcurrentPool";
+import { nanoid } from "nanoid";
+import { useState } from "react";
+import { TaskStatusEnum, FileItem } from "./types";
+import { formatRemainingTime } from "./utils";
 
 export class TaskQueue {
-  uid: string = nanoid()
-  type: "rotate" | "upload" = "upload"
-  list: FileItem[] = []
+  uid: string = nanoid();
+  type: "rotate" | "upload" = "upload";
+  list: FileItem[] = [];
 
   get isFinish() {
-    return this.list.every((item) => item.status === TaskStatusEnum.Finish)
+    return this.list.every((item) => item.status === TaskStatusEnum.Finish);
+  }
+
+  get totalRemainingTime() {
+    const time = this.list.reduce((prev, cur) => cur.remainingTime + prev, 0);
+    return formatRemainingTime(time);
+  }
+
+  get totalPercent() {
+    const totalPercent = this.list.length * 100;
+    let currentPercent = 0;
+
+    for (let i = 0, len = this.list.length; i < len; i++) {
+      const target = this.list[i];
+      if (target.status === TaskStatusEnum.Finish) {
+        currentPercent += 100;
+      } else if (target.status === TaskStatusEnum.InProgress) {
+        currentPercent += target.percent || 0;
+      }
+    }
+
+    return Math.floor((currentPercent / totalPercent) * 100);
+  }
+
+  get totalFinished() {
+    return this.list.reduce(
+      (prev, cur) => (cur.status === TaskStatusEnum.Finish ? prev + 1 : prev),
+      0
+    );
   }
 
   getTask(taskUid: string) {
-    return this.list.findIndex((t) => t.uid === taskUid)
+    return this.list.findIndex((t) => t.uid === taskUid);
   }
 
   constructor(parameters: Partial<TaskQueue> = {}) {
-    Object.assign(this, parameters)
+    Object.assign(this, parameters);
   }
 }
 
-const concurrentRequest = new ConcurrentRequest(5)
+const concurrentRequest = new ConcurrentRequest(5);
 
 // 计算任务队列总进度，有2种方案：
 // 1. 以任务为维度，当任务状态改变时，更新进度，颗粒度较粗
 // 2. 以任务的进度为维度，当任务的进度更新时，会经过一系列的换算，总进度跟着更新，颗粒度较细
 // 这里选择第二种方案
 export const useUploadQueue = () => {
-  const [taskQueue, setTaskQueue] = useState<TaskQueue[]>([])
+  const [taskQueue, setTaskQueue] = useState<TaskQueue[]>([]);
 
   // 创建或者更新一个任务队列
   // 最新的一个任务队列里的任务都为已完成，则新创建一个任务队列，否则push进去
-  const createOrUpdateQueue = (task: TaskQueue) => {
-    const lastQueue = taskQueue[taskQueue.length - 1]
-    if (lastQueue && lastQueue.isFinish) {
-      setTaskQueue([...taskQueue, task])
-    } else {
-      lastQueue.list.push(...task.list)
-      setTaskQueue([...taskQueue])
+  const createOrUpdateQueue = (initialTasks: FileItem[]) => {
+    if (!taskQueue.length) {
+      const newQueue = new TaskQueue({ list: initialTasks });
+      setTaskQueue([newQueue]);
+      return newQueue;
     }
-  }
+    const lastQueue = taskQueue[taskQueue.length - 1];
+    if (lastQueue.isFinish) {
+      const newQueue = new TaskQueue({ list: initialTasks });
+      setTaskQueue((prevTaskQueue) => [...prevTaskQueue, newQueue]);
+      return newQueue;
+    } else {
+      setTaskQueue((prevTaskQueue) =>
+        prevTaskQueue.map((t) =>
+          t.uid === lastQueue.uid
+            ? new TaskQueue({ ...t, list: [...t.list, ...initialTasks] })
+            : t
+        )
+      );
+      return lastQueue;
+    }
+  };
 
   // 触发input file
   const uploadFile = () => {
-    const input = document.createElement("input")
-    input.type = "file"
-    input.multiple = true
-    input.accept = "image/*"
-    input.onchange = handleFileChange
+    const input = document.createElement("input");
+    input.type = "file";
+    input.multiple = true;
+    input.accept = "image/*";
+    input.onchange = handleFileChange;
 
-    input.click()
-  }
+    input.click();
+  };
 
   // 上传文件处理
   const handleFileChange = (e: Event) => {
-    if (!e.target) return
-    const files: File[] = Array.from(e.target.files as File[])
-    if (!files.length) return
+    if (!e.target) return;
+    const files: File[] = Array.from(e.target.files as File[]);
+    if (!files.length) return;
 
     // 初始化
     const initialTasks: FileItem[] = files.map((file) => ({
@@ -67,18 +109,17 @@ export const useUploadQueue = () => {
       percent: 0,
       remainingTime: 0,
       status: TaskStatusEnum.Queued,
-    }))
-    const queue = new TaskQueue({ list: initialTasks })
-    createOrUpdateQueue(queue)
+    }));
+    const queue = createOrUpdateQueue(initialTasks);
 
-    const startTime = Date.now()
+    const startTime = Date.now();
 
     // 定义请求列表
     const requestList = files.map((file, i) => {
       return () => {
-        const reqAbortController = new AbortController()
-        const formData = new FormData()
-        formData.append("file", file)
+        const reqAbortController = new AbortController();
+        const formData = new FormData();
+        formData.append("file", file);
 
         return axios.post("http://localhost:3333/upload", formData, {
           signal: reqAbortController.signal,
@@ -88,9 +129,9 @@ export const useUploadQueue = () => {
             queueUid: queue.uid,
             reqAbortController,
           }),
-        })
-      }
-    })
+        });
+      };
+    });
 
     // 开始并发
     requestList.forEach((req, i) => {
@@ -103,25 +144,25 @@ export const useUploadQueue = () => {
               uid: initialTasks[i].uid,
               status: TaskStatusEnum.Finish,
             },
-          })
+          });
         })
         .catch((rea) => {
-          const target = initialTasks[i]
+          const target = initialTasks[i];
           if (isCancel(rea)) {
             // 取消的请求
             updateTask({
               queueUid: queue.uid,
               parameters: { uid: target.uid, status: TaskStatusEnum.Canceled },
-            })
-            return
+            });
+            return;
           }
           updateTask({
             queueUid: queue.uid,
             parameters: { uid: target.uid, status: TaskStatusEnum.Failed },
-          })
-        })
-    })
-  }
+          });
+        });
+    });
+  };
 
   // 创建进度跟踪处理函数
   const createProgressHandler = ({
@@ -130,17 +171,17 @@ export const useUploadQueue = () => {
     queueUid,
     reqAbortController,
   }: {
-    startTime: number
-    taskUid: string
-    queueUid: string
-    reqAbortController: AbortController
+    startTime: number;
+    taskUid: string;
+    queueUid: string;
+    reqAbortController: AbortController;
   }) => {
     return ({ loaded, total }: AxiosProgressEvent) => {
-      if (!total) return
-      const percent = Math.floor((loaded / total) * 100)
-      const elapsedTime = Date.now() - startTime
-      const estimatedTotalTime = (elapsedTime / percent) * 100
-      const remainingTime = estimatedTotalTime - elapsedTime
+      if (!total) return;
+      const percent = Math.floor((loaded / total) * 100);
+      const elapsedTime = Date.now() - startTime;
+      const estimatedTotalTime = (elapsedTime / percent) * 100;
+      const remainingTime = estimatedTotalTime - elapsedTime;
 
       updateTask({
         queueUid,
@@ -150,22 +191,22 @@ export const useUploadQueue = () => {
           percent,
           remainingTime,
           abort: () => {
-            reqAbortController.abort()
+            reqAbortController.abort();
           },
         },
-      })
-    }
-  }
+      });
+    };
+  };
 
   const updateTask = ({
     parameters,
     queueUid,
   }: {
-    queueUid: string
-    parameters: Partial<FileItem>
+    queueUid: string;
+    parameters: Partial<FileItem>;
   }) => {
-    setTaskQueue((prevTaskQueue) =>
-      prevTaskQueue.map((q) =>
+    setTaskQueue((prevTaskQueue) => {
+      const n = prevTaskQueue.map((q) =>
         q.uid === queueUid
           ? new TaskQueue({
               ...q,
@@ -174,43 +215,28 @@ export const useUploadQueue = () => {
               ),
             })
           : q
-      )
-    )
-  }
+      );
+      return n;
+    });
+  };
 
   // 计算任务队列的总进度
   const calcTotalPercent = (tasks: FileItem[]) => {
-    if (!tasks.length) return 0
-    // 每个task的完成进度是0-100
-    const totalPercent = tasks.length * 100
-    let currentPercent = 0
+    if (!tasks.length) return 0;
+    const totalPercent = tasks.length * 100;
+    let currentPercent = 0;
 
     for (let i = 0, len = tasks.length; i < len; i++) {
-      const target = tasks[i]
+      const target = tasks[i];
       if (target.status === TaskStatusEnum.Finish) {
-        currentPercent += 100
+        currentPercent += 100;
       } else if (target.status === TaskStatusEnum.InProgress) {
-        currentPercent += target.percent || 0
+        currentPercent += target.percent || 0;
       }
     }
 
-    return Math.floor((currentPercent / totalPercent) * 100)
-  }
-
-  // 格式化任务剩余完成时间
-  const formatRemainingTime = (milliseconds: number) => {
-    const minFormat = (value: number) => (value >= 0 ? value : 0)
-
-    const seconds = minFormat(Math.ceil(Number(milliseconds) / 1000))
-    const minutes = minFormat(Math.floor(seconds / 60))
-    const remainingSeconds = minFormat(seconds % 60)
-
-    if (minutes >= 1) {
-      return `${minutes} 分钟 ${remainingSeconds} 秒`
-    } else {
-      return `${remainingSeconds} 秒`
-    }
-  }
+    return Math.floor((currentPercent / totalPercent) * 100);
+  };
 
   // 取消全部
   const abortAll = (queueUid: string) => {
@@ -220,24 +246,23 @@ export const useUploadQueue = () => {
           ? new TaskQueue({
               ...q,
               list: q.list.map((t) => {
-                t.abort && t.abort()
+                t.abort && t.abort();
                 return {
                   ...t,
                   status: TaskStatusEnum.Canceled,
-                }
+                };
               }),
             })
           : q
       )
-    )
-    concurrentRequest.destroy()
-  }
+    );
+    concurrentRequest.destroy();
+  };
 
   return {
     taskQueue,
     calcTotalPercent,
     uploadFile,
-    formatRemainingTime,
     abortAll,
-  }
-}
+  };
+};
