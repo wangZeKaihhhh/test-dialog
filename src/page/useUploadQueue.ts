@@ -2,65 +2,46 @@ import axios, { AxiosProgressEvent, isCancel } from "axios"
 import ConcurrentRequest from "./ConcurrentPool"
 import { nanoid } from "nanoid"
 import { useState } from "react"
+import { TaskStatusEnum, FileItem } from "./types"
 
-export enum TaskStatusEnum {
-  /**
-   * 已完成
-   */
-  Finish,
-  /**
-   * 失败
-   */
-  Failed,
-  /**
-   * 进行中
-   */
-  InProgress,
-  /**
-   * 排队中
-   */
-  Queued,
-  /**
-   * 已取消
-   */
-  Canceled,
-}
+export class TaskQueue {
+  uid: string = nanoid()
+  type: "rotate" | "upload" = "upload"
+  list: FileItem[] = []
 
-export const TaskStatusEnumMap: Record<
-  TaskStatusEnum,
-  { label: string; value: TaskStatusEnum }
-> = {
-  [TaskStatusEnum.Finish]: { label: "已完成", value: TaskStatusEnum.Finish },
-  [TaskStatusEnum.Failed]: { label: "失败", value: TaskStatusEnum.Failed },
-  [TaskStatusEnum.InProgress]: {
-    label: "进行中",
-    value: TaskStatusEnum.InProgress,
-  },
-  [TaskStatusEnum.Queued]: { label: "进行中", value: TaskStatusEnum.Queued },
-  [TaskStatusEnum.Canceled]: {
-    label: "已取消",
-    value: TaskStatusEnum.Canceled,
-  },
-}
+  get isFinish() {
+    return this.list.every((item) => item.status === TaskStatusEnum.Finish)
+  }
 
-export interface FileItem {
-  // 原始File
-  file: File
-  uid: string
-  // 进度
-  percent: number
-  // 剩余完成时间，单位ms
-  remainingTime: number
-  // 任务状态
-  status: TaskStatusEnum
-  // 取消请求
-  abort?: () => void
+  getTask(taskUid: string) {
+    return this.list.findIndex((t) => t.uid === taskUid)
+  }
+
+  constructor(parameters: Partial<TaskQueue> = {}) {
+    Object.assign(this, parameters)
+  }
 }
 
 const concurrentRequest = new ConcurrentRequest(5)
 
+// 计算任务队列总进度，有2种方案：
+// 1. 以任务为维度，当任务状态改变时，更新进度，颗粒度较粗
+// 2. 以任务的进度为维度，当任务的进度更新时，会经过一系列的换算，总进度跟着更新，颗粒度较细
+// 这里选择第二种方案
 export const useUploadQueue = () => {
-  const [tasks, setTasks] = useState<FileItem[]>([])
+  const [queue, setQueue] = useState<TaskQueue[]>([])
+
+  // 创建或者更新一个任务队列
+  // 最新的一个任务队列里的任务都为已完成，则新创建一个任务队列，否则push进去
+  const createOrUpdateQueue = (task: TaskQueue) => {
+    const lastQueue = queue[queue.length - 1]
+    if (lastQueue && lastQueue.isFinish) {
+      setQueue([...queue, task])
+    } else {
+      lastQueue.list.push(...task.list)
+      setQueue([...queue])
+    }
+  }
 
   // 触发input file
   const uploadFile = () => {
@@ -88,7 +69,7 @@ export const useUploadQueue = () => {
       status: TaskStatusEnum.Queued,
     }))
 
-    setTasks((prevTask) => [...prevTask, ...initialTasks])
+    createOrUpdateQueue(new TaskQueue({ list: initialTasks }))
 
     const startTime = Date.now()
 
