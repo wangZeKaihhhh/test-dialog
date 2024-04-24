@@ -1,18 +1,18 @@
 type ReqFn = () => Promise<any>
 
 export default class ConcurrentRequest {
-  pool = new Set()
-  waitQueue: ReqFn[] = []
+  private static pool = new Set()
+  private static waitQueue: ReqFn[] = []
   maxConcurrency = 5
 
   constructor(maxConcurrency: number) {
     this.maxConcurrency = maxConcurrency
   }
 
-  request = (reqFn: ReqFn) => {
+  request(reqFn: ReqFn) {
     return new Promise((resolve, reject) => {
       // 判断运行池是否已满
-      const isFull = this.pool.size >= this.maxConcurrency
+      const isFull = ConcurrentRequest.pool.size >= this.maxConcurrency
 
       // 包装的新请求
       const newReqFn = () => {
@@ -25,11 +25,11 @@ export default class ConcurrentRequest {
           })
           .finally(() => {
             // 请求完成后，将该请求从运行池中删除
-            this.pool.delete(newReqFn)
+            ConcurrentRequest.pool.delete(newReqFn)
             // 从等待队列中取出一个新请求放入等待运行池执行
-            const next = this.waitQueue.shift()
+            const next = ConcurrentRequest.waitQueue.shift()
             if (next) {
-              this.pool.add(next)
+              ConcurrentRequest.pool.add(next)
               next()
             }
           })
@@ -37,12 +37,17 @@ export default class ConcurrentRequest {
 
       if (isFull) {
         // 如果运行池已满，则将新的请求放到等待队列中
-        this.waitQueue.push(newReqFn)
+        ConcurrentRequest.waitQueue.push(newReqFn)
       } else {
         // 如果运行池未满，则向运行池中添加一个新请求并执行该请求
-        this.pool.add(newReqFn)
+        ConcurrentRequest.pool.add(newReqFn)
         newReqFn()
       }
     })
+  }
+
+  destroy() {
+    ConcurrentRequest.waitQueue = []
+    ConcurrentRequest.pool.clear()
   }
 }
