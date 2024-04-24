@@ -1,14 +1,18 @@
 import { Progress, Toast } from "@douyinfe/semi-ui"
-import { TaskStatusEnumMap, useUploadQueue } from "./useUploadQueue"
+import { useUploadQueue } from "./useUploadQueue"
 
 const UploadFileList = () => {
-  const { tasks, uploadFile, calcTotalPercent, formatRemainingTime, abortAll } =
-    useUploadQueue()
+  const {
+    taskQueue,
+    uploadFile,
+    calcTotalPercent,
+    formatRemainingTime,
+    abortAll,
+  } = useUploadQueue()
 
   return (
     <div>
       <button onClick={uploadFile}>点击上传</button>
-      <button onClick={abortAll}>取消全部</button>
       <div>
         总进度：
         <Progress

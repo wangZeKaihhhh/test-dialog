@@ -29,17 +29,17 @@ const concurrentRequest = new ConcurrentRequest(5)
 // 2. 以任务的进度为维度，当任务的进度更新时，会经过一系列的换算，总进度跟着更新，颗粒度较细
 // 这里选择第二种方案
 export const useUploadQueue = () => {
-  const [queue, setQueue] = useState<TaskQueue[]>([])
+  const [taskQueue, setTaskQueue] = useState<TaskQueue[]>([])
 
   // 创建或者更新一个任务队列
   // 最新的一个任务队列里的任务都为已完成，则新创建一个任务队列，否则push进去
   const createOrUpdateQueue = (task: TaskQueue) => {
-    const lastQueue = queue[queue.length - 1]
+    const lastQueue = taskQueue[taskQueue.length - 1]
     if (lastQueue && lastQueue.isFinish) {
-      setQueue([...queue, task])
+      setTaskQueue([...taskQueue, task])
     } else {
       lastQueue.list.push(...task.list)
-      setQueue([...queue])
+      setTaskQueue([...taskQueue])
     }
   }
 
@@ -68,8 +68,8 @@ export const useUploadQueue = () => {
       remainingTime: 0,
       status: TaskStatusEnum.Queued,
     }))
-
-    createOrUpdateQueue(new TaskQueue({ list: initialTasks }))
+    const queue = new TaskQueue({ list: initialTasks })
+    createOrUpdateQueue(queue)
 
     const startTime = Date.now()
 
@@ -84,7 +84,8 @@ export const useUploadQueue = () => {
           signal: reqAbortController.signal,
           onUploadProgress: createProgressHandler({
             startTime,
-            task: initialTasks[i],
+            taskUid: initialTasks[i].uid,
+            queueUid: queue.uid,
             reqAbortController,
           }),
         })
@@ -96,16 +97,28 @@ export const useUploadQueue = () => {
       concurrentRequest
         .request(req)
         .then(() => {
-          updateTask(initialTasks[i], { status: TaskStatusEnum.Finish })
+          updateTask({
+            queueUid: queue.uid,
+            parameters: {
+              uid: initialTasks[i].uid,
+              status: TaskStatusEnum.Finish,
+            },
+          })
         })
         .catch((rea) => {
           const target = initialTasks[i]
           if (isCancel(rea)) {
             // 取消的请求
-            updateTask(target, { status: TaskStatusEnum.Canceled })
+            updateTask({
+              queueUid: queue.uid,
+              parameters: { uid: target.uid, status: TaskStatusEnum.Canceled },
+            })
             return
           }
-          updateTask(target, { status: TaskStatusEnum.Failed })
+          updateTask({
+            queueUid: queue.uid,
+            parameters: { uid: target.uid, status: TaskStatusEnum.Failed },
+          })
         })
     })
   }
@@ -113,11 +126,13 @@ export const useUploadQueue = () => {
   // 创建进度跟踪处理函数
   const createProgressHandler = ({
     startTime,
-    task,
+    taskUid,
+    queueUid,
     reqAbortController,
   }: {
     startTime: number
-    task: FileItem
+    taskUid: string
+    queueUid: string
     reqAbortController: AbortController
   }) => {
     return ({ loaded, total }: AxiosProgressEvent) => {
@@ -127,20 +142,39 @@ export const useUploadQueue = () => {
       const estimatedTotalTime = (elapsedTime / percent) * 100
       const remainingTime = estimatedTotalTime - elapsedTime
 
-      updateTask(task, {
-        status: TaskStatusEnum.InProgress,
-        percent,
-        remainingTime,
-        abort: () => {
-          reqAbortController.abort()
+      updateTask({
+        queueUid,
+        parameters: {
+          uid: taskUid,
+          status: TaskStatusEnum.InProgress,
+          percent,
+          remainingTime,
+          abort: () => {
+            reqAbortController.abort()
+          },
         },
       })
     }
   }
 
-  const updateTask = (task: FileItem, parameters: Partial<FileItem>) => {
-    setTasks((prevTask) =>
-      prevTask.map((t) => (t.uid === task.uid ? { ...t, ...parameters } : t))
+  const updateTask = ({
+    parameters,
+    queueUid,
+  }: {
+    queueUid: string
+    parameters: Partial<FileItem>
+  }) => {
+    setTaskQueue((prevTaskQueue) =>
+      prevTaskQueue.map((q) =>
+        q.uid === queueUid
+          ? new TaskQueue({
+              ...q,
+              list: q.list.map((t) =>
+                t.uid === parameters.uid ? { ...t, ...parameters } : t
+              ),
+            })
+          : q
+      )
     )
   }
 
@@ -179,24 +213,31 @@ export const useUploadQueue = () => {
   }
 
   // 取消全部
-  const abortAll = () => {
-    setTasks((prevTasks) => {
-      return prevTasks.map((t) => {
-        t.abort && t.abort()
-        return {
-          ...t,
-          status: TaskStatusEnum.Canceled,
-        }
-      })
-    })
+  const abortAll = (queueUid: string) => {
+    setTaskQueue((prevTaskQueue) =>
+      prevTaskQueue.map((q) =>
+        q.uid === queueUid
+          ? new TaskQueue({
+              ...q,
+              list: q.list.map((t) => {
+                t.abort && t.abort()
+                return {
+                  ...t,
+                  status: TaskStatusEnum.Canceled,
+                }
+              }),
+            })
+          : q
+      )
+    )
     concurrentRequest.destroy()
   }
 
   return {
+    taskQueue,
     calcTotalPercent,
     uploadFile,
     formatRemainingTime,
-    tasks,
     abortAll,
   }
 }
