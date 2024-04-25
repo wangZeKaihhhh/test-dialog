@@ -1,10 +1,10 @@
-import { Progress } from "@douyinfe/semi-ui";
-import { useUploadQueue } from "./useUploadQueue";
-import { TaskStatusEnumMap } from "./types";
-import { formatRemainingTime } from "./utils";
+import { Progress } from "@douyinfe/semi-ui"
+import { useUploadQueue } from "./useUploadQueue"
+import { TaskStatusEnumMap } from "./types"
+import { formatRemainingTime } from "./utils"
 
 const UploadFileList = () => {
-  const { taskQueue, uploadFile, abortAll } = useUploadQueue();
+  const { taskQueue, uploadFile, abortAll } = useUploadQueue()
 
   return (
     <div>
@@ -19,7 +19,7 @@ const UploadFileList = () => {
             <section className="flex gap-x-3 items-center justify-between px-2 h-36px">
               <div>
                 <span>剩余完成时间：</span>
-                <span>{t.totalRemainingTime}</span>
+                <span>{formatRemainingTime(t.totalRemainingTime)}</span>
               </div>
 
               <div className="w-200px">
@@ -29,7 +29,7 @@ const UploadFileList = () => {
               <div>
                 <button
                   onClick={() => {
-                    abortAll(t.uid);
+                    abortAll(t.uid)
                   }}
                 >
                   取消全部
@@ -78,7 +78,7 @@ const UploadFileList = () => {
         ))}
       </section>
     </div>
-  );
-};
+  )
+}
 
-export default UploadFileList;
+export default UploadFileList
