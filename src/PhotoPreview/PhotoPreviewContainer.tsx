@@ -40,6 +40,7 @@ const PhotoPreviewContainer = (props: PhotoPreviewContainerProps) => {
     if (previewVisibleStatus.current === "closing") {
       previewVisibleStatus.current = "closed"
       setFlipStatus("first")
+      updatePreviewInfo({ src: "", e: void 0, visible: false })
     }
   }
 
@@ -83,11 +84,10 @@ const PhotoPreviewContainer = (props: PhotoPreviewContainerProps) => {
               ? 0.45
               : 0,
         }}
-        onClick={(e) => {
+        onClick={() => {
           previewVisibleStatus.current = "closing"
           setFlipStatus("last")
           updatePreviewInfo((draft) => {
-            draft.e = e
             draft.visible = false
           })
         }}

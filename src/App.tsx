@@ -1,7 +1,4 @@
-import UploadFileList from "./page/UploadFileList"
 import "react-photo-view/dist/react-photo-view.css"
-import PhotoList from "./page/PhotoList"
-import PhotoPreview from "./PhotoPreview/PhotoPreviewContainer"
 import { PhotoPreviewProvider } from "./PhotoPreview/PhotoPreviewProvider"
 import { mockImages } from "./flip/mock"
 import useCreatePhotoPreview from "./PhotoPreview/hooks/useCreatePhotoPreview"
@@ -10,7 +7,7 @@ function TestList() {
   const { createPhotoPreview } = useCreatePhotoPreview()
 
   return (
-    <section className="grid grid-cols-4 gap-4">
+    <section className="grid grid-cols-4 gap-4 h-full overflow-y-auto">
       {mockImages.map((src, i) => (
         <div
           key={src + i}
