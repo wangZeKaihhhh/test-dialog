@@ -11,6 +11,9 @@ dependencies:
   axios:
     specifier: ^1.6.8
     version: 1.6.8
+  classnames:
+    specifier: ^2.5.1
+    version: 2.5.1
   cors:
     specifier: ^2.8.5
     version: 2.8.5
@@ -35,6 +38,9 @@ dependencies:
   react-photo-view:
     specifier: ^1.2.4
     version: 1.2.4(react-dom@18.2.0)(react@18.2.0)
+  use-immer:
+    specifier: ^0.9.0
+    version: 0.9.0(immer@10.0.4)(react@18.2.0)
 
 devDependencies:
   '@types/lodash-es':
@@ -2455,6 +2461,10 @@ packages:
     engines: {node: '>= 4'}
     dev: true
 
+  /immer@10.0.4:
+    resolution: {integrity: sha512-cuBuGK40P/sk5IzWa9QPUaAdvPHjkk1c+xYsd9oZw+YQQEV+10G0P5uMpGctZZKnyQ+ibRO08bD25nWLmYi2pw==}
+    dev: false
+
   /import-fresh@3.3.0:
     resolution: {integrity: sha512-veYYhQa+D1QBKznvhUHxb8faxlrwUnxseDAbAp457E0wLNio2bOSKnjYDhMj+YiAq61xrMGhQk9iXVk5FzgQMw==}
     engines: {node: '>=6'}
@@ -3454,6 +3464,16 @@ packages:
     dependencies:
       punycode: 2.3.1
     dev: true
+
+  /use-immer@0.9.0(immer@10.0.4)(react@18.2.0):
+    resolution: {integrity: sha512-/L+enLi0nvuZ6j4WlyK0US9/ECUtV5v9RUbtxnn5+WbtaXYUaOBoKHDNL9I5AETdurQ4rIFIj/s+Z5X80ATyKw==}
+    peerDependencies:
+      immer: '>=2.0.0'
+      react: ^16.8.0 || ^17.0.1 || ^18.0.0
+    dependencies:
+      immer: 10.0.4
+      react: 18.2.0
+    dev: false
 
   /util-deprecate@1.0.2:
     resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}
