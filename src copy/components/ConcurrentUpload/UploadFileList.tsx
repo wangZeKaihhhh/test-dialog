@@ -1,29 +1,14 @@
-import { Progress } from "@douyinfe/semi-ui";
-import { useUploadQueue } from "./hooks/useUploadQueue";
-import { TaskStatusEnumMap } from "./types";
-import { formatRemainingTime } from "../page/utils";
+import { Progress } from "@douyinfe/semi-ui"
+import { useUploadQueue } from "./hooks/useUploadQueue"
+import { TaskStatusEnumMap } from "./types"
+import { formatRemainingTime } from "./utils"
 
 const UploadFileList = () => {
-  const { taskQueue, uploadFile, abortAll } = useUploadQueue();
+  const { taskQueue, uploadFile, abortAll } = useUploadQueue()
 
   return (
     <div>
-      <button
-        onClick={() => {
-          const input = document.createElement("input");
-          input.type = "file";
-          input.multiple = true;
-          input.accept = "image/*";
-          input.onchange = (e: any) => {
-            const files = e.target?.files;
-            files && uploadFile(files);
-          };
-
-          input.click();
-        }}
-      >
-        点击上传
-      </button>
+      <button onClick={uploadFile}>点击上传</button>
 
       <section className="flex flex-col gap-y-4">
         {taskQueue.map((t) => (
@@ -44,7 +29,7 @@ const UploadFileList = () => {
               <div>
                 <button
                   onClick={() => {
-                    abortAll(t.uid);
+                    abortAll(t.uid)
                   }}
                 >
                   取消全部
@@ -93,7 +78,7 @@ const UploadFileList = () => {
         ))}
       </section>
     </div>
-  );
-};
+  )
+}
 
-export default UploadFileList;
+export default UploadFileList

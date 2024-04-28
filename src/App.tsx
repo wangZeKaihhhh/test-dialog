@@ -1,9 +1,10 @@
-import { PhotoPreviewProvider } from "./PhotoPreview/PhotoPreviewProvider"
-import { testPhotos } from "./flip/mock"
-import useCreatePhotoPreview from "./PhotoPreview/hooks/useCreatePhotoPreview"
+import { PhotoPreviewProvider } from "./PhotoPreview/PhotoPreviewProvider";
+import { testPhotos } from "./flip/mock";
+import useCreatePhotoPreview from "./PhotoPreview/hooks/useCreatePhotoPreview";
+import UploadFileList from "./ConcurrentUpload/UploadFileList";
 
 function TestList() {
-  const { createPhotoPreview } = useCreatePhotoPreview()
+  const { createPhotoPreview } = useCreatePhotoPreview();
 
   return (
     <section className="flex flex-wrap gap-4 max-h-full overflow-y-auto">
@@ -20,21 +21,22 @@ function TestList() {
                 maskSrc: thumbnail,
                 width: 600,
                 height: 600,
-              })
+              });
             }}
           />
         </div>
       ))}
     </section>
-  )
+  );
 }
 
 function App() {
   return (
-    <PhotoPreviewProvider>
-      <TestList />
-    </PhotoPreviewProvider>
-  )
+    // <PhotoPreviewProvider>
+    //   <TestList />
+    // </PhotoPreviewProvider>
+    <UploadFileList />
+  );
 }
 
-export default App
+export default App;

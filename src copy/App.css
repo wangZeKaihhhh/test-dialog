@@ -1,0 +1,19 @@
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+.justified {
+  position: relative;
+  width: 100%;
+}
+
+.box {
+  position: absolute;
+  background: yellowgreen;
+}
