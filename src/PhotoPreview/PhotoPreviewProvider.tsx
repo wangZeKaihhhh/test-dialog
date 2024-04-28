@@ -1,12 +1,15 @@
 import { PropsWithChildren, createContext, MouseEvent } from "react"
 import { useImmer, Updater } from "use-immer"
 import Portal from "./Portal"
-import PhotoPreviewContainer from "./PhotoPreviewContainer"
+import PhotoPreviewContainer1 from "./PhotoPreviewContainer1"
 
 export interface PhotoPreviewStore {
   visible: boolean
-  e?: MouseEvent
   src: string
+  maskSrc: string
+  width: number
+  height: number
+  e?: MouseEvent
 }
 
 export interface PhotoPreviewContextType {
@@ -28,6 +31,9 @@ export const PhotoPreviewProvider: React.FC<PropsWithChildren> = ({
   const [previewInfo, updatePreviewInfo] = useImmer<PhotoPreviewStore>({
     visible: false,
     src: "",
+    maskSrc: "",
+    width: 0,
+    height: 0,
   })
 
   return (
@@ -35,7 +41,8 @@ export const PhotoPreviewProvider: React.FC<PropsWithChildren> = ({
       <>
         {children}
         <Portal>
-          <PhotoPreviewContainer
+          <PhotoPreviewContainer1
+            key={previewInfo.src}
             {...previewInfo}
             updatePreviewInfo={updatePreviewInfo}
           />

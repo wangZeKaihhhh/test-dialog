@@ -4,6 +4,7 @@ import {
   PhotoPreviewStore,
   PhotoPreviewContextType,
 } from "./PhotoPreviewProvider"
+import GradualImage from "./components/GradualImage"
 
 type PreviewVisibleStatus = "show" | "closing" | "closed"
 type FlipStatus = "first" | "last" | "invert" | "play"
@@ -22,7 +23,7 @@ const initialDomRect = {
 } as DOMRect
 
 const PhotoPreviewContainer = (props: PhotoPreviewContainerProps) => {
-  const { src: currentImage, e, visible, updatePreviewInfo } = props
+  const { src: currentImage, e, visible, updatePreviewInfo, maskSrc } = props
   // Flip状态
   const [flipStatus, setFlipStatus] = useState<FlipStatus>("first")
   // 标识预览的状态，show：显示，closing：开始关闭，closed：已关闭
@@ -37,10 +38,12 @@ const PhotoPreviewContainer = (props: PhotoPreviewContainerProps) => {
   const imgRef = useRef<HTMLImageElement | null>(null)
 
   const onTransitionEnd = () => {
+    console.log("onTransitionEnd", previewVisibleStatus.current)
+
     if (previewVisibleStatus.current === "closing") {
       previewVisibleStatus.current = "closed"
       setFlipStatus("first")
-      updatePreviewInfo({ src: "", e: void 0, visible: false })
+      updatePreviewInfo({ src: "", maskSrc: "", e: void 0, visible: false })
     }
   }
 
@@ -50,6 +53,7 @@ const PhotoPreviewContainer = (props: PhotoPreviewContainerProps) => {
 
   useLayoutEffect(() => {
     if (!e) return
+    console.log("useLayoutEffect")
 
     if (flipStatus === "first" && previewVisibleStatus.current === "show") {
       const currentPreviewEle = e.target as HTMLElement
@@ -57,6 +61,8 @@ const PhotoPreviewContainer = (props: PhotoPreviewContainerProps) => {
       setFlipStatus("last")
     } else if (flipStatus === "last") {
       if (previewVisibleStatus.current === "show") {
+        console.log(imgRef.current)
+
         if (!imgRef.current) return
 
         lastRect.current = currentImage
@@ -71,13 +77,21 @@ const PhotoPreviewContainer = (props: PhotoPreviewContainerProps) => {
         setFlipStatus("play")
       }, 10)
     }
-  }, [flipStatus, currentImage, visible, e])
+  }, [flipStatus, currentImage, e])
+
+  console.log({
+    flipStatus,
+    props,
+    previewVisibleStatus: previewVisibleStatus.current,
+    firstRect: firstRect.current,
+    lastRect: lastRect.current,
+  })
 
   return previewVisibleStatus.current === "show" ||
     previewVisibleStatus.current === "closing" ? (
     <>
       <div
-        className="fixed left-0 top-0 bottom-0 right-0 bg-black opacity-50 z-1 transition-all duration-300!"
+        className="fixed left-0 top-0 bottom-0 right-0 bg-black opacity-50 z-1 flex justify-center items-center transition-all duration-300!"
         style={{
           opacity:
             flipStatus === "play" && previewVisibleStatus.current !== "closing"
@@ -93,32 +107,37 @@ const PhotoPreviewContainer = (props: PhotoPreviewContainerProps) => {
         }}
       />
 
-      <img
+      <GradualImage
         ref={imgRef}
-        className={classNames([
-          "fixed left-0 top-0 bottom-0 right-0 m-auto max-w-full max-h-full z-2",
-          {
-            "transition-all duration-400! ease-in-out":
-              (previewVisibleStatus.current === "show" &&
-                flipStatus === "play") ||
-              previewVisibleStatus.current === "closing",
+        maskAttr={{
+          src: maskSrc,
+          className: classNames([
+            "fixed left-0 top-0 bottom-0 right-0 m-auto z-2 max-w-full max-h-full w-800px h-600px",
+            {
+              "transition-all duration-400! ease-in-out":
+                (previewVisibleStatus.current === "show" &&
+                  flipStatus === "play") ||
+                previewVisibleStatus.current === "closing",
+            },
+          ]),
+          style: {
+            transform:
+              flipStatus === "invert" ||
+              previewVisibleStatus.current === "closing"
+                ? `translate3d(${
+                    firstRect.current.left - lastRect.current.left
+                  }px,${
+                    firstRect.current.top - lastRect.current.top
+                  }px,0) scale(${scaleValue.current})`
+                : "translate3d(0,0,0) scale(1)",
+            transformOrigin: "0 0",
           },
+          onTransitionEnd,
+        }}
+        className={classNames([
+          "fixed left-0 top-0 bottom-0 right-0 m-auto max-w-full max-h-full z-3",
         ])}
         src={currentImage}
-        style={{
-          transform:
-            flipStatus === "invert" ||
-            previewVisibleStatus.current === "closing"
-              ? `translate3d(${
-                  firstRect.current.left - lastRect.current.left
-                }px,${
-                  firstRect.current.top - lastRect.current.top
-                }px,0) scale(${scaleValue.current})`
-              : "translate3d(0,0,0) scale(1)",
-          transformOrigin: "0 0",
-        }}
-        onTransitionEnd={onTransitionEnd}
-        alt=""
       />
     </>
   ) : null

@@ -1,25 +1,28 @@
-import "react-photo-view/dist/react-photo-view.css"
 import { PhotoPreviewProvider } from "./PhotoPreview/PhotoPreviewProvider"
-import { mockImages } from "./flip/mock"
+import { testPhotos } from "./flip/mock"
 import useCreatePhotoPreview from "./PhotoPreview/hooks/useCreatePhotoPreview"
 
 function TestList() {
   const { createPhotoPreview } = useCreatePhotoPreview()
 
   return (
-    <section className="grid grid-cols-4 gap-4 h-full overflow-y-auto">
-      {mockImages.map((src, i) => (
-        <div
-          key={src + i}
-          onClick={(e) => {
-            createPhotoPreview({
-              e,
-              visible: true,
-              src,
-            })
-          }}
-        >
-          <img src={src} alt="" className="w-full" />
+    <section className="flex flex-wrap gap-4 max-h-full overflow-y-auto">
+      {testPhotos.map(({ thumbnail, fullImage }, i) => (
+        <div key={thumbnail + i}>
+          <img
+            src={thumbnail}
+            alt=""
+            onClick={(e) => {
+              createPhotoPreview({
+                e,
+                visible: true,
+                src: fullImage,
+                maskSrc: thumbnail,
+                width: 600,
+                height: 600,
+              })
+            }}
+          />
         </div>
       ))}
     </section>
