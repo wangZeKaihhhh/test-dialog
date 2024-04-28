@@ -1,10 +1,10 @@
-import { Progress } from "@douyinfe/semi-ui"
-import { useUploadQueue } from "./useUploadQueue"
-import { TaskStatusEnumMap } from "./types"
-import { formatRemainingTime } from "./utils"
+import { Progress } from "@douyinfe/semi-ui";
+import { useUploadQueue } from "./hooks/useUploadQueue";
+import { TaskStatusEnumMap } from "./types";
+import { formatRemainingTime } from "../page/utils";
 
 const UploadFileList = () => {
-  const { taskQueue, uploadFile, abortAll } = useUploadQueue()
+  const { taskQueue, uploadFile, abortAll } = useUploadQueue();
 
   return (
     <div>
@@ -29,7 +29,7 @@ const UploadFileList = () => {
               <div>
                 <button
                   onClick={() => {
-                    abortAll(t.uid)
+                    abortAll(t.uid);
                   }}
                 >
                   取消全部
@@ -78,7 +78,7 @@ const UploadFileList = () => {
         ))}
       </section>
     </div>
-  )
-}
+  );
+};
 
-export default UploadFileList
+export default UploadFileList;
