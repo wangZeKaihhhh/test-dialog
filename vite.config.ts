@@ -1,10 +1,10 @@
-import { defineConfig, loadEnv, type UserConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import { resolve } from "path";
-import UnoCSS from "unocss/vite";
+import { defineConfig, loadEnv, type UserConfig } from "vite"
+import react from "@vitejs/plugin-react"
+import { resolve } from "path"
+import UnoCSS from "unocss/vite"
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd());
+  const env = loadEnv(mode, process.cwd())
 
   const config: UserConfig = {
     server: {
@@ -13,6 +13,10 @@ export default defineConfig(({ mode }) => {
          * 文件上传
          */
         "/upload": {
+          target: env.VITE_UPLOAD_URL,
+          changeOrigin: true,
+        },
+        "/api/v1": {
           target: env.VITE_FETCH,
           changeOrigin: true,
         },
@@ -24,6 +28,6 @@ export default defineConfig(({ mode }) => {
         "@": resolve("./src"),
       },
     },
-  };
-  return config;
-});
+  }
+  return config
+})
